@@ -9,6 +9,7 @@ __pycache__/
 # datasets
 dataset_txt/
 processed_dataset/
+processed_samples/
 
 # Distribution / packaging
 .Python

@@ -284,7 +284,7 @@ def inject_medical_entities(text_paragraphs: List[str], llm_client: LLMClient) -
             Choose from a wide variety of common and specific medical terms.
             
             Keep the original information intact. Add 1-2 sentences naturally.
-            Format your response as a single paragraph with entities marked like this:
+            Format your response as a single p`aragraph with entities marked like this:
             They were diagnosed with [MED]{random_condition}[/MED] and prescribed [DRUG]{random_drug}[/DRUG]. They were treated at [HSP]{random_hospital}[/HSP].
             
             Only return the paragraph, no quotation marks, no other text.
@@ -526,6 +526,58 @@ def get_dataset_files(dataset_dir: str = "dataset_txt/dataset_txt/training") -> 
     logger.info(f"Found {len(files)} CoNLL formatted files in {dataset_dir}")
     return files
 
+def save_entities_json(entity_data: Dict[str, List[Dict[str, Any]]], text_paragraphs: List[str], modified_paragraphs: List[str], output_path: str, original_conll: List[List[str]]):
+    """
+    Save entity data to JSON file.
+    
+    Args:
+        entity_data: Entity data dictionary
+        text_paragraphs: Original text paragraphs
+        modified_paragraphs: Modified text paragraphs
+        output_path: Path to save the JSON file
+        original_conll: Original CoNLL formatted paragraphs
+    """
+    # Convert entity data to records format
+    records = []
+    
+    # Find modified paragraph index
+    modified_idx = -1
+    for i, (orig, mod) in enumerate(zip(text_paragraphs, modified_paragraphs)):
+        if orig != mod:
+            modified_idx = i
+            break
+    
+    # Add records for all paragraphs
+    for i, (orig_text, mod_text) in enumerate(zip(text_paragraphs, modified_paragraphs)):
+        if i == modified_idx:
+            # Add record for modified paragraph with entities
+            entities = []
+            for entity_type, entity_list in entity_data.items():
+                for entity in entity_list:
+                    if entity["paragraph_idx"] == i:
+                        entities.append((entity_type, entity["text"]))
+            records.append([
+                mod_text,  # Original text
+                entities,  # NER pairs
+                True  # Has medical info
+            ])
+        else:
+            # Add record for unmodified paragraph with original NER tags
+            entities = []
+            for line in original_conll[i]:
+                parts = line.split()
+                if len(parts) >= 2:  # Ensure we have at least word and tag
+                    word, tag = parts[0], parts[1]
+                    entities.append((tag, word))
+            records.append([
+                orig_text,  # Original text
+                entities,  # Original NER pairs
+                False  # No medical info
+            ])
+    
+    with open(output_path, "w", encoding="utf-8") as f:
+        json.dump(records, f, indent=2)
+
 def main():
     """Main function to process CoNLL formatted files."""
     parser = argparse.ArgumentParser(description="Process CoNLL formatted files")
@@ -578,8 +630,8 @@ def main():
                 f.write("\n\n".join(modified_paragraphs))
             
             # Save entity data
-            with open(os.path.join(args.output_dir, f"{basename}_entities.json"), "w", encoding="utf-8") as f:
-                json.dump(entity_data, f, indent=2)
+            save_entities_json(entity_data, text_paragraphs, modified_paragraphs, 
+                             os.path.join(args.output_dir, f"{basename}_entities.json"), conll_paragraphs)
             
             # Save CoNLL output
             write_conll_file(modified_conll, os.path.join(args.output_dir, f"{basename}_conll.txt"))
