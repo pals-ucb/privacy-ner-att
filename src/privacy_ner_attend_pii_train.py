@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 import argparse
 
 def load_hf_dataset(args):
-    dataset_dir = ar gs.hf_dataset
+    dataset_dir = args.hf_dataset
     dataset = load_from_disk(dataset_dir)
     return dataset
 
@@ -629,7 +629,7 @@ def train_privacy_model(args,
                 "pii_label2id": pii_label2id,
                 "hidden_size": hidden_size,
                 "num_privacy_labels": 2,
-                "ner_dropout_prob": 0.1,
+                "ner_dropout_prob": training_args["ner_dropout_prob"],
                 "use_max_pool": True,
                 "expansion_factor": training_args["expansion_factor"],
             },
@@ -704,6 +704,7 @@ def parse_arguments(model_name: str):
     parser.add_argument("--num_epochs", type=int, default = 5, help="Number of epochs for training.")
     parser.add_argument("--max_seq_length", type=int, default = 512, help="Max input tokens.")
     parser.add_argument("--weight_decay", type=float, default = 0.01, help="Weight decay used for training")
+    parser.add_argument("--drop_out", type=float, default = 0.1, help="The Drop out rate in the NER layers to prevent overfitting.")
     parser.add_argument("--learning_rate", type=float, default = 2E-5, help="The learning rate.")
     parser.add_argument("--expansion_factor", type=float, default = 1.0, help="Expansion factor to increase or decrease the weights in proportion to the weights of Embeddings")
     parser.add_argument('--compute_metrics', action='store_true', help='Compute accuracy metrics if labels provided')
@@ -746,7 +747,8 @@ if __name__ == "__main__":
                                           personal_label2id = personal_label2id, 
                                           pii_label2id = pii_label2id,
                                           num_privacy_labels=num_privacy_labels,
-                                          expansion_factor=args.expansion_factor
+                                          expansion_factor=args.expansion_factor,
+                                          ner_dropout_prob=args.drop_out
                                           )
 
     device = torch.device("cpu")
@@ -767,6 +769,7 @@ if __name__ == "__main__":
         "base_model_name": args.base_model_name,
         "expansion_factor": args.expansion_factor,
         "optimizer_type": "Adam",
+        "ner_dropout_prob": args.drop_out
     }
 
     train_privacy_model(args,
