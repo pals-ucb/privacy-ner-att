@@ -20,7 +20,7 @@ import matplotlib.pyplot as plt
 import argparse
 
 def load_hf_dataset(args):
-    dataset_dir = args.hf_dataset
+    dataset_dir = ar gs.hf_dataset
     dataset = load_from_disk(dataset_dir)
     return dataset
 

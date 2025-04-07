@@ -26,8 +26,6 @@ def load_model(model_path, device):
 def evaluate_model(model, dataset, batch_size, device, compute_metrics):
     predictions = []
     labels = []
-    print(dataset)
-    print(dataset['test'])
     test_loader = DataLoader(
         dataset["test"],  
         batch_size=batch_size,

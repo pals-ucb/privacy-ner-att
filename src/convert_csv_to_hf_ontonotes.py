@@ -15,17 +15,16 @@ def rename_columns(df):
 
 def load_and_prep_df(args):
     # Build full path to dataset
-    dataset_path = f"{args.rootdir}/{args.dataset}"
+    dataset_path = f"{args.dataset}"
     if not os.path.isfile(dataset_path):
         raise FileNotFoundError(f"Dataset not found at path: {dataset_path}")
     # Load the dataset
     print(f"Loading CSV data set ...")
     df = pd.read_csv(dataset_path)
-    print("Renaming first three columns...")
-    if args.rename_columns:
-        df = rename_columns(df)
-    #print(df.head(1))
 
+    if args.rename_columns:
+        print("Renaming first three columns...")
+    
     print("Preview of loaded DataFrame:")
     print(df.head())
     print(df.columns)
@@ -55,7 +54,7 @@ def prepare_hf_dataset(args, df):
         "test": test_dataset
     })
     print(f"Saving HF dataset ....")
-    dataset.save_to_disk(f"{args.rootdir}/{args.target}")
+    dataset.save_to_disk(f"{args.target}")
     return dataset
 
 def validate_bio_tags(hf_dataset):
@@ -67,18 +66,16 @@ def validate_bio_tags(hf_dataset):
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Loads NER dataset in csv form  and converts to hf Dataset.")
-    parser.add_argument("--rootdir", type=str, default = "/Users/pals/MICS/MIDS_266/project/privacy-ner-att", help="Root directory path")
-    parser.add_argument("--dataset", type=str, default = "datasets/expanded_privacy_dataset_v2.csv", help="CSV dataset file name")
-    parser.add_argument("--target", type=str, default = "datasets/hf_expanded_privacy_dataset_v2", help="Target HuggingFace dataset name in the dataset directoy")
+    parser.add_argument("--dataset", type=str, required=True, help="CSV dataset file name")
+    parser.add_argument("--target", type=str, required=True, help="Target HuggingFace dataset name in the dataset directoy")
     parser.add_argument("--validate", action="store_true", help="Validate the BIO tags in dataset")
     parser.add_argument("--rename_columns", action="store_true", help="Rename the columns for the required name.")
 
     args = parser.parse_args()
     print("CSV to HF Convertor and Validator")
     print("----------------------------------")
-    print(f"GIT Clone path    : {args.rootdir}")
-    print(f"Source CSV file   : {args.rootdir}/{args.dataset}")
-    print(f"Target dir for HF : {args.rootdir}/{args.target}")
+    print(f"Source CSV file   : {args.dataset}")
+    print(f"Target dir for HF : {args.target}")
     return args
 
 if __name__ == "__main__":
