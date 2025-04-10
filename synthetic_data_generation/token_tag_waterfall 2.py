@@ -209,7 +209,7 @@ def main():
     parser.add_argument("--dataset_dir", type=str, 
                        default="synthetic_data_generation/dataset_txt/dataset_txt/training",
                        help="Directory containing CoNLL formatted files")
-    parser.add_argument("--num_samples", type=int, default=1,
+    parser.add_argument("--num_samples", type=int, default=False,
                        help="Number of samples to process")
     parser.add_argument("--output_dir", type=str, default="examples",
                        help="Output directory for processed files")
@@ -228,16 +228,15 @@ def main():
     if args.specific_file:
         files_to_process = [args.specific_file]
     else:
-        # Get all files from training directory
-        training_dir = "synthetic_data_generation/dataset_txt/dataset_txt/training"
-        files_to_process = [f for f in os.listdir(training_dir) if f.startswith("annot_csv_") and f.endswith(".txt")]
+        # Get all files from the specified directory
+        files_to_process = [f for f in os.listdir(args.dataset_dir) if f.startswith("annot_csv_") and f.endswith(".txt")]
         if args.num_samples:
             files_to_process = random.sample(files_to_process, min(args.num_samples, len(files_to_process)))
     
     # Process each file
     for file_name in files_to_process:
         logger.info(f"Processing file: {file_name}")
-        file_path = os.path.join(training_dir, file_name)
+        file_path = os.path.join(args.dataset_dir, file_name)
         process_file(file_path, args.output_dir)
 
 if __name__ == "__main__":
