@@ -66,14 +66,14 @@ def process_json_file(json_file_path: str, writer: csv.writer) -> None:
         # Create the original paragraph by joining tokens with smart spacing
         original_paragraph = join_tokens_with_smart_spacing(tokens)
         
-        # Create the annotations as a list of (token, tag) pairs
-        annotations = [(token, tag) for token, tag in zip(tokens, selected_tags)]
+        # Create the annotations as a list of (tag, token) pairs - switched order
+        annotations = [(tag, token) for token, tag in zip(tokens, selected_tags)]
         
-        # Get the pii flag
-        pii = paragraph.get('pii', False)
+        # Get the pii flag and convert to 1/0
+        pii = 1 if paragraph.get('pii', False) else 0
         
         # Write the row to the CSV
-        writer.writerow([original_paragraph, str(annotations), str(pii).lower()])
+        writer.writerow([original_paragraph, str(annotations), pii])
 
 def main():
     """Main function to process all JSON files in the examples directory."""
@@ -99,8 +99,8 @@ def main():
     with open(output_csv_path, 'w', encoding='utf-8', newline='') as f:
         writer = csv.writer(f)
         
-        # Write the header
-        writer.writerow(['paragraph', 'annotations', 'pii'])
+        # Write the header with updated column names
+        writer.writerow(['text', 'bio_tags', 'privacy_class_label'])
         
         # Process each JSON file and collect paragraphs for JSON output
         all_paragraphs = []
@@ -132,14 +132,14 @@ def main():
                 # Create the original paragraph by joining tokens with smart spacing
                 original_paragraph = join_tokens_with_smart_spacing(tokens)
                 
-                # Create the annotations as a list of (token, tag) pairs
-                annotations = [(token, tag) for token, tag in zip(tokens, selected_tags)]
+                # Create the annotations as a list of (tag, token) pairs - switched order
+                annotations = [(tag, token) for token, tag in zip(tokens, selected_tags)]
                 
-                # Get the pii flag
-                pii = paragraph.get('pii', False)
+                # Get the pii flag and convert to 1/0
+                pii = 1 if paragraph.get('pii', False) else 0
                 
                 # Write the row to the CSV
-                writer.writerow([original_paragraph, str(annotations), str(pii).lower()])
+                writer.writerow([original_paragraph, str(annotations), pii])
         
         # Write all paragraphs to JSON file
         with open(output_json_path, 'w', encoding='utf-8') as f:
