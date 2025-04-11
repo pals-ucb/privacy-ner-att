@@ -30,14 +30,22 @@ def get_base_tokenizer(args):
 
 def tokenize_and_align_labels(input_row, args, tokenizer, personal_label2id, pii_label2id):
     # Tokenize the input text with word alignment
-    tokenized = tokenizer(
-        input_row["text"],
-        truncation=True,
-        padding="max_length",
-        max_length=args.max_seq_length,
-        return_offsets_mapping=True,
-        return_tensors=None  # Ensure output is plain dict
-    )
+    text = input_row.get("text", "")
+    if text is None or not isinstance(text, str) or len(text.strip()) < 5:
+        print("Skipping bad input:", text)
+        return {}  # Skip this row by returning an empty dict
+    
+    try:
+        tokenized = tokenizer(
+            text=text,
+            truncation=True,
+            padding="max_length",
+            max_length=args.max_seq_length,
+            return_offsets_mapping=True,
+            return_tensors=None)
+    except Exception as e:
+        print(f"Tokenization failed e : {e}")
+        return {}
 
     # Convert bio_tags string to list of (tag, token)
     bio_tags = ast.literal_eval(input_row["bio_tags"]) if isinstance(input_row["bio_tags"], str) else input_row["bio_tags"]
@@ -281,7 +289,8 @@ class CrossAttentionLayer(nn.Module):
         return attended_output, attn_weights
 
 class PrivacyClassificationHead(nn.Module):
-    def __init__(self, hidden_size, num_privacy_labels=2, use_max_pool=True, expansion_factor=1.0):
+    def __init__(self, hidden_size, num_privacy_labels=2, use_max_pool=True, expansion_factor=1.0, 
+                 classifier_dropout_prob=0.4):
         super().__init__()
         self.hidden_size = hidden_size
         self.use_max_pool = use_max_pool
@@ -291,6 +300,7 @@ class PrivacyClassificationHead(nn.Module):
         self.ff = nn.Linear(hidden_size, intermediate_size)
         self.activation = nn.ReLU()
         self.classifier = nn.Linear(intermediate_size, num_privacy_labels)
+        self.dropout = nn.Dropout(classifier_dropout_prob)
         self.loss_fn = nn.CrossEntropyLoss()
 
     def forward(self, hidden_states, attention_mask, labels=None, return_attention=False, attention_weights=None, return_attention_weights=False):
@@ -308,6 +318,7 @@ class PrivacyClassificationHead(nn.Module):
 
         x = self.ff(pooled)  # [B, H']
         x = self.activation(x)
+        x = self.dropout(x)
         logits = self.classifier(x)  # [B, num_classes]
 
         if labels is not None:
@@ -327,7 +338,8 @@ class PrivacyDetectionModel(nn.Module):
         expansion_factor: float = 1.0,
         num_privacy_labels: int = 2,
         return_attention_weights: bool = False,
-        use_max_pool: bool = True
+        use_max_pool: bool = True,
+        classifier_dropout_prob = 0.4
     ):
         super().__init__()
 
@@ -339,7 +351,7 @@ class PrivacyDetectionModel(nn.Module):
         self.ner_dropout_prob = ner_dropout_prob
         self.expansion_factor = expansion_factor
         self.return_attention_weights = return_attention_weights
-        
+        self.classifier_dropout_prob = classifier_dropout_prob
         self.base_transformer = AutoModel.from_pretrained(base_model_name)
 
         # === NER Heads ===
@@ -369,7 +381,8 @@ class PrivacyDetectionModel(nn.Module):
             hidden_size=hidden_size,
             num_privacy_labels=num_privacy_labels,
             use_max_pool=use_max_pool,
-            expansion_factor=expansion_factor
+            expansion_factor=expansion_factor,
+            classifier_dropout_prob=classifier_dropout_prob
         )
 
     def forward(
@@ -545,13 +558,14 @@ def train_privacy_model(args,
     val_loader = DataLoader(dataset["validation"], batch_size=batch_size, collate_fn=custom_collate_fn)
 
     optimizer_type = training_args.get("optimizer_type", "AdamW").lower()
-
+    lr = training_args["learning_rate"]
+    wt = training_args["weight_decay"]
     if optimizer_type == "adam":
-        optimizer = torch.optim.Adam(model.parameters(), lr=training_args["learning_rate"])
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=wt)
     elif optimizer_type == "adamw":
-        optimizer = torch.optim.AdamW(model.parameters(), lr=training_args["learning_rate"])
+        optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=wt)
     elif optimizer_type == "sgd":
-        optimizer = torch.optim.SGD(model.parameters(), lr=training_args["learning_rate"])
+        optimizer = torch.optim.SGD(model.parameters(), lr=lr, weight_decay=wt)
     else:
         raise ValueError(f"Unsupported optimizer_type '{optimizer_type}'. Please choose from ['Adam', 'AdamW', 'SGD'].")
 
@@ -632,6 +646,7 @@ def train_privacy_model(args,
                 "ner_dropout_prob": training_args["ner_dropout_prob"],
                 "use_max_pool": True,
                 "expansion_factor": training_args["expansion_factor"],
+                "classifier_dropout_prob": training_args["classifier_dropout_prob"]
             },
             "training_args": training_args,
         }
@@ -705,6 +720,7 @@ def parse_arguments(model_name: str):
     parser.add_argument("--max_seq_length", type=int, default = 512, help="Max input tokens.")
     parser.add_argument("--weight_decay", type=float, default = 0.01, help="Weight decay used for training")
     parser.add_argument("--drop_out", type=float, default = 0.1, help="The Drop out rate in the NER layers to prevent overfitting.")
+    parser.add_argument("--classifier_dropout_prob", type=float, default = 0.4, help="The Drop out rate in classification layer to prevent overfitting.")
     parser.add_argument("--learning_rate", type=float, default = 2E-5, help="The learning rate.")
     parser.add_argument("--expansion_factor", type=float, default = 1.0, help="Expansion factor to increase or decrease the weights in proportion to the weights of Embeddings")
     parser.add_argument('--compute_metrics', action='store_true', help='Compute accuracy metrics if labels provided')
@@ -748,7 +764,8 @@ if __name__ == "__main__":
                                           pii_label2id = pii_label2id,
                                           num_privacy_labels=num_privacy_labels,
                                           expansion_factor=args.expansion_factor,
-                                          ner_dropout_prob=args.drop_out
+                                          ner_dropout_prob=args.drop_out,
+                                          classifier_dropout_prob=args.classifier_dropout_prob
                                           )
 
     device = torch.device("cpu")
@@ -769,7 +786,9 @@ if __name__ == "__main__":
         "base_model_name": args.base_model_name,
         "expansion_factor": args.expansion_factor,
         "optimizer_type": "Adam",
-        "ner_dropout_prob": args.drop_out
+        "ner_dropout_prob": args.drop_out,
+        "classifier_dropout_prob": args.classifier_dropout_prob,
+        "weight_decay": args.weight_decay
     }
 
     train_privacy_model(args,
