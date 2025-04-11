@@ -5,8 +5,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from transformers import AutoModel, AdamW, AutoTokenizer, AutoModelForTokenClassification, AutoConfig
-from torchcrf import CRF 
+from torch.optim import AdamW
+from transformers import AutoModel, AutoTokenizer
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from functools import partial
@@ -174,7 +174,7 @@ class CRFNERHead(nn.Module):
         self.ff_layer = nn.Linear(hidden_size, self.expanded_size)
         self.activation = nn.ReLU()
         self.classifier = nn.Linear(self.expanded_size, self.num_labels)
-        self.crf = CRF(num_tags=self.num_labels, batch_first=True)
+        #self.crf = CRF(num_tags=self.num_labels, batch_first=True)
         self.name = "layer<PER> " if self.num_labels <= 3 else "layer<PII> "
 
     def forward(self, sequence_output, labels=None, attention_mask=None, return_decoded=False):
