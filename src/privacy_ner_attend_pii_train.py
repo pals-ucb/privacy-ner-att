@@ -529,6 +529,34 @@ def get_last_epoch_metrics(train_metrics, val_metrics):
         val_metrics["acc_privacy"][-1]
     )
 
+def save_privacy_model(save_path, args, model, optimizer, epoch, personal_label2id, pii_label2id, 
+                       hidden_size, training_args, best_model=False):
+    base_model = args.base_model_name.split("/")[-1]
+    os.makedirs(save_path, exist_ok=True)
+    if best_model:
+        model_save_file = os.path.join(save_path, f"privacy_NAP_{base_model}_BEST.pt")
+    else:
+        model_save_file = os.path.join(save_path, f"privacy_NAP_{base_model}_{epoch}.pt")
+    checkpoint = {
+        "epoch": epoch,
+        "model_state_dict": model.state_dict(),
+        "optimizer_state_dict": optimizer.state_dict(),
+        "model_args": {
+            "base_model_name": args.base_model_name,
+            "personal_label2id": personal_label2id,
+            "pii_label2id": pii_label2id,
+            "hidden_size": hidden_size,
+            "num_privacy_labels": 2,
+            "ner_dropout_prob": training_args["ner_dropout_prob"],
+            "use_max_pool": True,
+            "expansion_factor": training_args["expansion_factor"],
+            "classifier_dropout_prob": training_args["classifier_dropout_prob"]
+        },
+        "training_args": training_args,
+    }
+    torch.save(checkpoint, model_save_file)
+    print(f"Saved checkpoint to: {model_save_file}")
+
 def train_privacy_model(args,
                         training_args,
                         model,
@@ -537,18 +565,22 @@ def train_privacy_model(args,
                         personal_label2id,
                         pii_label2id,
                         save_path=None,
-                        save_every_epoch=True):
+                        save_every_epoch=False):
     # Auto-detect device
 
     num_epochs = training_args["num_epochs"]
     batch_size = training_args["batch_size"]
+    best_val_loss = float("inf")
+    patience = training_args.get("patience", 2)
+    patience_counter = 0
 
     device = (
         torch.device("mps") if torch.backends.mps.is_available()
         else torch.device("cuda") if torch.cuda.is_available()
         else torch.device("cpu")
     )
-    print(f"🔧 Using device: {device}")
+    print(f"Base Mode: {args.base_model_name}")
+    print(f"Using device: {device}")
 
     model.to(device)
     model.train()
@@ -628,30 +660,24 @@ def train_privacy_model(args,
             f"PII Acc: {acc_pii_tr:.8f}/{acc_pii_val:.8f} | "
             f"Privacy Acc: {acc_priv_tr:.4f}/{acc_priv_val:.8f}")
 
-    # === Save Model Checkpoint ===
-    if save_path and save_every_epoch:
-        os.makedirs(save_path, exist_ok=True)
-        model_save_file = os.path.join(save_path, f"privacy_ner_attend_pii_{epoch}.pt")
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            patience_counter = 0
+            print(f"Validation loss improved to {val_loss:.8f} — saving best model")
+            save_privacy_model(save_path, args, model, optimizer, epoch, personal_label2id, pii_label2id, hidden_size, training_args, best_model=True)
+        else:
+            patience_counter += 1
+            print(f"Validation loss did not improve (patience {patience_counter}/{patience})")
 
-        checkpoint = {
-            "epoch": epoch,
-            "model_state_dict": model.state_dict(),
-            "optimizer_state_dict": optimizer.state_dict(),
-            "model_args": {
-                "base_model_name": args.base_model_name,
-                "personal_label2id": personal_label2id,
-                "pii_label2id": pii_label2id,
-                "hidden_size": hidden_size,
-                "num_privacy_labels": 2,
-                "ner_dropout_prob": training_args["ner_dropout_prob"],
-                "use_max_pool": True,
-                "expansion_factor": training_args["expansion_factor"],
-                "classifier_dropout_prob": training_args["classifier_dropout_prob"]
-            },
-            "training_args": training_args,
-        }
-        torch.save(checkpoint, model_save_file)
-        print(f"Saved checkpoint to: {model_save_file}")
+        if patience_counter >= patience:
+            print(f"Early stopping triggered at epoch {epoch}")
+            break
+
+        if save_path and save_every_epoch:
+            save_privacy_model(save_path, args, model, optimizer, epoch, personal_label2id, pii_label2id, hidden_size, training_args)
+    if save_path:
+        print(f"Saving only final model.")
+        save_privacy_model(save_path, args, model, optimizer, num_epochs, personal_label2id, pii_label2id, hidden_size, training_args)
     print("Training complete.")
     return model
 
@@ -799,6 +825,6 @@ if __name__ == "__main__":
                         personal_label2id=personal_label2id,
                         pii_label2id=pii_label2id,
                         save_path=f"{rootdir}/model",
-                        save_every_epoch=True)
+                        save_every_epoch=False)
     plot_loss_curves(f"{rootdir}/plots", train_metrics, val_metrics)
     plot_accuracy_curves(f"{rootdir}/plots", train_metrics, val_metrics)
