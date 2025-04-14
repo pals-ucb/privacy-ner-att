@@ -21,7 +21,7 @@
 \textbf{Model} & \textbf{Accuracy} & \textbf{F1 Score} & \textbf{Precision} & \textbf{Recall} \\
 \midrule
 \textit{Privacy-NER Attention} & 0.98 & 0.98 & 0.99 & 0.98 \\
-\textit{DeBERTa Fine-tuned} & 0.96 & 0.95 & 0.96 & 0.95 \\
+\textit{DeBERTa Fine-tuned} & -- & -- & -- & -- \\
 \textit{Baseline: bart-large-mnli (zero-shot)} & 0.62 & 0.61 & 0.62 & 0.62 \\
 \bottomrule
 \end{tabular}
@@ -60,8 +60,8 @@
 \cmidrule(lr){2-3} \cmidrule(lr){4-5} \cmidrule(lr){6-7}
 & Precision & Recall & Precision & Recall & Precision & Recall \\
 \midrule
-PII & 0.99 & 0.97 & 0.95 & 0.96 & 0.86 & 0.85 \\
-Not PII & 0.99 & 0.98 & 0.96 & 0.95 & 0.38 & 0.39 \\
+PII & 0.99 & 0.97 & -- & -- & 0.86 & 0.85 \\
+Not PII & 0.99 & 0.98 & -- & -- & 0.38 & 0.39 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -92,8 +92,8 @@ Not PII & 0.99 & 0.98 & 0.96 & 0.95 & 0.38 & 0.39 \\
 \cmidrule(lr){3-4}
 & & PII & Not PII \\
 \midrule
-\multirow{2}{*}{\textbf{Actual}} & PII & 143 & 7 \\
-& Not PII & 7 & 143 \\
+\multirow{2}{*}{\textbf{Actual}} & PII & -- & -- \\
+& Not PII & -- & -- \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -118,11 +118,11 @@ Not PII & 0.99 & 0.98 & 0.96 & 0.95 & 0.38 & 0.39 \\
 \begin{itemize}
   \item \textbf{Privacy-NER Attention:} Achieved 99\% accuracy with minimal false positives and negatives, demonstrating strong performance on the synthetic test set.
   
-  \item \textbf{Model Comparison:} Privacy-NER Attention outperformed both the DeBERTa model (96\% accuracy) and the zero-shot baseline (62\% accuracy). The baseline struggled particularly with false positives.
+  \item \textbf{Model Comparison:} Privacy-NER Attention outperformed the zero-shot baseline (62\% accuracy). Results for the DeBERTa model are pending.
   
-  \item \textbf{Error Patterns:} Privacy-NER Attention had only 7 total misclassifications compared to DeBERTa's 14 and the baseline's 113 errors.
+  \item \textbf{Error Patterns:} Privacy-NER Attention had only 7 total misclassifications compared to the baseline's 113 errors.
   
-  \item \textbf{Architecture Benefits:} The Privacy-NER approach leveraging named entity recognition showed advantages over standard fine-tuning, though both supervised methods achieved strong results.
+  \item \textbf{Architecture Benefits:} The Privacy-NER approach leveraging named entity recognition showed clear advantages over zero-shot classification.
 \end{itemize}
 
 \end{document} 
