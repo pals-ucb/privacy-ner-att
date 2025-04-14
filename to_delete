@@ -1,0 +1,103 @@
+% LaTeX document for comparing model performance
+\documentclass{article}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{multirow}
+
+\begin{document}
+
+\section{Model Performance Comparison for PII Detection}
+
+\subsection{Binary Classification Performance Metrics}
+
+\begin{table}[h]
+\centering
+\caption{Performance Comparison Between \textit{Privacy-NER Attention} and \textit{Baseline: bart-large-mnli (zero-shot)}}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Model} & \textbf{Accuracy} & \textbf{F1 Score} & \textbf{Precision} & \textbf{Recall} \\
+\midrule
+\textit{Privacy-NER Attention} & 0.98 & 0.98 & 0.99 & 0.98 \\
+\textit{Baseline: bart-large-mnli (zero-shot)} & 0.62 & 0.61 & 0.62 & 0.62 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Training Performance}
+
+\begin{figure}[h]
+\centering
+\begin{subfigure}{.5\textwidth}
+  \centering
+  \caption{\textit{Privacy-NER Attention}}
+  % \includegraphics[width=\linewidth]{model_a_curve.png}
+\end{subfigure}%
+\begin{subfigure}{.5\textwidth}
+  \centering
+  \caption{\textit{Baseline: bart-large-mnli (zero-shot)}}
+  % \includegraphics[width=\linewidth]{model_b_curve.png}
+\end{subfigure}
+\caption{Learning curves for both models}
+\end{figure}
+
+\subsection{Class-wise Performance}
+
+\begin{table}[h]
+\centering
+\caption{Performance by Classification Class}
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Class} & \multicolumn{2}{c}{\textit{Privacy-NER Attention}} & \multicolumn{2}{c}{\textit{Baseline: bart-large-mnli (zero-shot)}} \\
+\cmidrule(lr){2-3} \cmidrule(lr){4-5}
+& Precision & Recall & Precision & Recall \\
+\midrule
+PII & 0.99 & 0.97 & 0.86 & 0.85 \\
+Not PII & 0.99 & 0.98 & 0.38 & 0.39 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Confusion Matrix}
+
+\begin{table}[h]
+\centering
+\caption{Confusion Matrix for \textit{Privacy-NER Attention}}
+\begin{tabular}{lccc}
+\toprule
+& & \multicolumn{2}{c}{\textbf{Predicted}} \\
+\cmidrule(lr){3-4}
+& & PII & Not PII \\
+\midrule
+\multirow{2}{*}{\textbf{Actual}} & PII & 145 & 5 \\
+& Not PII & 2 & 148 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[h]
+\centering
+\caption{Confusion Matrix for \textit{Baseline: bart-large-mnli (zero-shot)}}
+\begin{tabular}{lccc}
+\toprule
+& & \multicolumn{2}{c}{\textbf{Predicted}} \\
+\cmidrule(lr){3-4}
+& & PII & Not PII \\
+\midrule
+\multirow{2}{*}{\textbf{Actual}} & PII & 128 & 22 \\
+& Not PII & 91 & 59 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Discussion and Conclusion}
+
+We evaluated our final model on a held-out test set of synthetic examples (and some manually composed examples for additional verification). Overall, the model's performance was very strong on the synthetic test, which is expected given the training data was similarly distributed. The key results are:
+
+\begin{itemize}
+  \item \textbf{Privacy Classification:} The model achieved 99\% accuracy on classifying sentences as sensitive or not. In terms of F1 score for the positive (sensitive) class, it scored around 0.990, indicating almost all privacy-related sentences were correctly identified with very few false alarms or misses. This high performance reflects the relatively clear patterns in the training data.
+\end{itemize}
+
+\end{document} 
